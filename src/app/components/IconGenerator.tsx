@@ -19,8 +19,15 @@ export default function IconGenerator() {
 
   const handleGenerate = async (customDescription?: string) => {
     const descToUse = customDescription || description;
-    if (!descToUse || !descToUse.trim()) {
+    if (!descToUse) {
       setError('Please enter a description');
+      return;
+    }
+
+    // Ensure we have a string and not a DOM element
+    const descriptionString = String(descToUse);
+    if (!descriptionString || descriptionString === '[object Object]') {
+      setError('Please enter a valid description');
       return;
     }
 
@@ -34,7 +41,7 @@ export default function IconGenerator() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ description: descToUse }),
+        body: JSON.stringify({ description: descriptionString }),
       });
 
       const data = await response.json();
@@ -130,7 +137,7 @@ export default function IconGenerator() {
 
 
         <button
-          onClick={handleGenerate}
+          onClick={() => handleGenerate()}
           disabled={isLoading || !description.trim()}
           className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
         >
