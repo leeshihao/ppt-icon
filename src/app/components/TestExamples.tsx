@@ -11,10 +11,10 @@ const TEST_EXAMPLES = [
   "save/download",
   "notification bell",
   "search magnifying glass",
-  "the concept of growth",
+  "growth",
   "connection between people",
-  "heart icon",
-  "star rating",
+  "heart",
+  "star",
   "shopping cart",
   "email envelope",
 ];
