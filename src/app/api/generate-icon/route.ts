@@ -6,6 +6,25 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
+// Model configuration
+const MODEL_CONFIG = {
+  'claude-sonnet-4-5-20250929': {
+    provider: 'anthropic',
+    model: 'claude-sonnet-4-5-20250929',
+    maxTokens: 1000
+  },
+  'gpt-4.5-pro': {
+    provider: 'openai',
+    model: 'gpt-4.5-pro',
+    maxTokens: 1000
+  },
+  'gemini-2.5-pro': {
+    provider: 'google',
+    model: 'gemini-2.5-pro',
+    maxTokens: 1000
+  }
+};
+
 const ICON_GENERATION_PROMPT = `You are an expert icon designer. Generate a minimalist SVG icon based on the user's description.
 
 STRICT REQUIREMENTS:
@@ -62,9 +81,47 @@ Description: {description}
 
 SVG:`;
 
+// AI Provider functions
+async function generateWithAnthropic(prompt: string, model: string, maxTokens: number) {
+  const response = await anthropic.messages.create({
+    model: model,
+    max_tokens: maxTokens,
+    messages: [{
+      role: "user",
+      content: prompt
+    }]
+  });
+  return response.content[0].type === 'text' ? response.content[0].text : '';
+}
+
+async function generateWithOpenAI(prompt: string, model: string, maxTokens: number) {
+  // Note: This would require OpenAI SDK and API key
+  // For now, return a placeholder response
+  throw new Error('OpenAI integration not yet implemented. Please use Claude Sonnet 4.5.');
+}
+
+async function generateWithGoogle(prompt: string, model: string, maxTokens: number) {
+  // Note: This would require Google AI SDK and API key
+  // For now, return a placeholder response
+  throw new Error('Google Gemini integration not yet implemented. Please use Claude Sonnet 4.5.');
+}
+
+async function generateWithProvider(provider: string, prompt: string, model: string, maxTokens: number) {
+  switch (provider) {
+    case 'anthropic':
+      return await generateWithAnthropic(prompt, model, maxTokens);
+    case 'openai':
+      return await generateWithOpenAI(prompt, model, maxTokens);
+    case 'google':
+      return await generateWithGoogle(prompt, model, maxTokens);
+    default:
+      throw new Error(`Unsupported provider: ${provider}`);
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { description } = await request.json();
+    const { description, model = 'claude-sonnet-4-5-20250929' } = await request.json();
 
     if (!description) {
       return NextResponse.json(
@@ -76,16 +133,30 @@ export async function POST(request: NextRequest) {
     const prompt = ICON_GENERATION_PROMPT
       .replace('{description}', description);
 
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-5-20250929",
-      max_tokens: 1000,
-      messages: [{
-        role: "user",
-        content: prompt
-      }]
-    });
+    // Get model configuration
+    const modelConfig = MODEL_CONFIG[model as keyof typeof MODEL_CONFIG];
+    if (!modelConfig) {
+      return NextResponse.json(
+        { error: `Unsupported model: ${model}` },
+        { status: 400 }
+      );
+    }
 
-    let svgContent = response.content[0].type === 'text' ? response.content[0].text : '';
+    // Generate with selected provider
+    let svgContent: string;
+    try {
+      svgContent = await generateWithProvider(
+        modelConfig.provider,
+        prompt,
+        modelConfig.model,
+        modelConfig.maxTokens
+      );
+    } catch (providerError) {
+      return NextResponse.json(
+        { error: providerError instanceof Error ? providerError.message : 'Generation failed' },
+        { status: 500 }
+      );
+    }
     
     // Extract SVG from response
     const extractedSVG = extractSVG(svgContent);
@@ -111,16 +182,14 @@ export async function POST(request: NextRequest) {
         const fallbackPrompt = FALLBACK_PROMPT
           .replace('{description}', description);
 
-        const fallbackResponse = await anthropic.messages.create({
-          model: "claude-sonnet-4-5-20250929",
-          max_tokens: 500,
-          messages: [{
-            role: "user",
-            content: fallbackPrompt
-          }]
-        });
+        const fallbackContent = await generateWithProvider(
+          modelConfig.provider,
+          fallbackPrompt,
+          modelConfig.model,
+          500
+        );
 
-        const fallbackSVG = extractSVG(fallbackResponse.content[0].type === 'text' ? fallbackResponse.content[0].text : '');
+        const fallbackSVG = extractSVG(fallbackContent);
         if (fallbackSVG) {
           const processedFallback = sanitizeSVG(fallbackSVG);
           const fixedFallback = fixSVG(processedFallback);

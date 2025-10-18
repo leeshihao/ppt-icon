@@ -11,6 +11,7 @@ interface IconGeneratorProps {}
 export default function IconGenerator() {
   const [description, setDescription] = useState('');
   const [selectedColor, setSelectedColor] = useState('#000000');
+  const [selectedModel, setSelectedModel] = useState('claude-sonnet-4-5-20250929');
   const [generatedSVG, setGeneratedSVG] = useState<string | null>(null);
   const [originalSVG, setOriginalSVG] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -41,7 +42,7 @@ export default function IconGenerator() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ description: descriptionString }),
+        body: JSON.stringify({ description: descriptionString, model: selectedModel }),
       });
 
       const data = await response.json();
@@ -135,6 +136,25 @@ export default function IconGenerator() {
           />
         </div>
 
+        <div>
+          <label htmlFor="model" className="block text-sm font-medium text-gray-700 mb-2">
+            AI Model
+          </label>
+          <select
+            id="model"
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            disabled={isLoading}
+          >
+            <option value="claude-sonnet-4-5-20250929">Claude Sonnet 4.5</option>
+            <option value="gpt-4.5-pro">OpenAI GPT-4.5 Pro</option>
+            <option value="gemini-2.5-pro">Google Gemini 2.5 Pro</option>
+          </select>
+          <p className="text-xs text-gray-500 mt-1">
+            Claude: Anthropic • GPT-4.5: OpenAI • Gemini: Google
+          </p>
+        </div>
 
         <button
           onClick={() => handleGenerate()}
